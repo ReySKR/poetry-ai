@@ -1,0 +1,13 @@
+[project]
+name = "poetry-api"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi[standard]>=0.116.1",
+    "poetry-ai",
+]
+
+[tool.uv.sources]
+poetry-ai = { path = "../poetry-ai" }
