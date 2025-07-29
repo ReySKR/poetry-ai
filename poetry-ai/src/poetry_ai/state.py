@@ -1,5 +1,8 @@
-from typing import TypedDict
+from typing import TypedDict, List
+from langchain_core.messages import BaseMessage, AIMessage, HumanMessage
 
 class State(TypedDict):
-    messages: list
-    history_rewritten_answer: str
+    messages: List[BaseMessage]
+    last_poetry: AIMessage
+    last_criticism: str
+    history_rewritten_criticism: str

@@ -104,7 +104,6 @@ sys_prompts_arch_1 = {
             **Gebe lediglich das Gedicht aus, füge keinerlei Kommentare oder Rückfragen deinerseits hinzu!**
 
             # Nutzereingabe:
-            {answer}
             """,
             "29.07.25"
         )
@@ -144,7 +143,6 @@ sys_prompts_arch_1 = {
             3. **Hilfsbereitschaft**: Stütze deine Verbesserungsmöglichkeiten auf Basis des Inhalts der Poesie.
 
             # Das Gedicht:
-            {poetry}
             """,
             "29.07.25"
         )
