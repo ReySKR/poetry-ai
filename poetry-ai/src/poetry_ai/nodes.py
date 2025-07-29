@@ -103,6 +103,6 @@ def rephrase_poetry(state: State) -> State:
         )
     ]
     rephrased_poetry = _llm.invoke(message_stack)
-    state["messages"].append(rephrase_poetry)
+    state["messages"].append(rephrased_poetry)
     state["last_poetry"] = rephrased_poetry
     return state
