@@ -67,7 +67,7 @@ def is_finished(state:State) -> str:
     finished = _llm.invoke(message_stack).content
 
     # Hard this for invalid outputs
-    if finished == "1":
+    if finished == "0":
         return "history_rewriter"
     else:
         return END

@@ -116,10 +116,10 @@ sys_prompts_arch_1 = {
             # Deine Kernaufgabe:
             1. **Analyse der Chathistorie**: Nimm die formatierte Chathistorie auf.
             2. **Extraktion der Essenz**: Konzentriere dich insbesondere auf die Fragen (AIMessage) und Antworten (HumanMessage)
-            3. **Ausgabeformat:** Gebe deine Entscheidung lediglich Binär aus. Nutze dafür die Zahlen 0 -> False ODER 1 -> True
+            3. **Ausgabeformat:** Gebe deine Entscheidung lediglich Binär aus. Nutze dafür die Zahlen 0 -> Gedichtverbesserung gewünscht ODER 1 -> Gedicht abgeschlossen
 
             # Formathinweise:
-            **Füge keinerlei Kommentare deinerseits hinzu. Gebe lediglich die Zahlen 0 -> False ODER 1 -> True aus!
+            **Füge keinerlei Kommentare deinerseits hinzu. Gebe lediglich die Zahlen 0 -> Gedichtverbesserung gewünscht ODER 1 -> Gedicht abgeschlossen aus!
 
             # Chathistorie:
             {history}
