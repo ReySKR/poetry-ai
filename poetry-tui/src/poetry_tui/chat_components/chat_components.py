@@ -1,9 +1,9 @@
 from typing import List, Tuple
 
 from textual.app import ComposeResult, App
-from textual.containers import VerticalGroup, VerticalScroll
+from textual.containers import VerticalGroup, VerticalScroll, HorizontalGroup
 from textual.reactive import Reactive, reactive
-from textual.widgets import Label, Input
+from textual.widgets import Label, Input, Button
 
 from .utility import MessageTypeEnum
 
@@ -25,21 +25,22 @@ class _MessageContainer(VerticalGroup):
 class ChatHistory(VerticalScroll):
     messages: Reactive[List[Tuple[MessageTypeEnum, str]]] = reactive([
         (MessageTypeEnum.AIMessage, "Hey! Im your assistant"),
-    ], init=False)
+    ], init=False, recompose=True)
 
     def compose(self) -> ComposeResult:
         for message_type, message in self.messages:
             yield _MessageContainer(message_type, message)
 
-    def watch_messages(self, old, new) -> None:
-        # Nur die zuletzt hinzugefügte Message mounten
-        kind, text = new[-1]
-        self.mount(_MessageContainer(kind, text))
-        self.scroll_end(animate=False)
 
 # ---- Input Section ----
 
 class InputContainer(VerticalGroup):
+
+    DEFAULT_CSS = """
+    HorizontalGroup { padding: 1 0 1 1; width: 100%; align-horizontal: center; }
+    Button { width: 50%; border: tall $border-blurred; margin: 0 0 0 1; }
+    """
+
     def __init__(self):
         super().__init__()
         self.border_title = "Ihre Eingabe"
@@ -48,4 +49,9 @@ class InputContainer(VerticalGroup):
 
     def compose(self) -> ComposeResult:
         # Safe Guard could be added via custom validator!
-        yield Input(type="text")
+        yield Input(type="text", id="prompt", placeholder="Ihre einzigartige Antwort an die KI.")
+        yield HorizontalGroup(
+            Button("Neuer Chat", id="btn_new_chat"),
+            Button("Drucken", id="btn_print")
+        )
+        yield Label
