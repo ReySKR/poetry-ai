@@ -1,0 +1,17 @@
+[project]
+name = "poetry-tui"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "httpx>=0.28.1",
+    "textual>=5.3.0",
+]
+
+[project.scripts]
+poetry-tui = "poetry_tui:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
