@@ -2,15 +2,20 @@ from textual.app import App, ComposeResult
 from textual.screen import Screen
 from textual.widgets import Footer, Header, Input, Button, Static
 from textual import on
+from dotenv import load_dotenv
 
 from poetry_tui.chat_components import *
+# noinspection PyUnresolvedReferences
+from poetry_tui.api import APIHandler
+load_dotenv()
 
 CHAT_TIMEOUT = 120
 
 class PoetryAI(Screen):
     """A Textual app to create a chat interface for the poetry ai.."""
     session_id = 0
-    was_resetted = False
+    was_resetted = True
+    api_handler = None
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
@@ -24,13 +29,14 @@ class PoetryAI(Screen):
         self._debounce_count: int = CHAT_TIMEOUT
         self._label.update(f"{self._debounce_count}s bis zur Zurücksetzung des Chats")
         self._ticker: Timer = self.set_interval(1.0, self._second_step, pause=True)
+        self.api_handler = APIHandler(self.session_id)
+
 
     @on(Input.Changed)
     def on_prompt_changed(self, ev: Input.Changed) -> None:
         self._debounce_count = CHAT_TIMEOUT
         self._label.update(f"{self._debounce_count}s bis zur Zurücksetzung des Chats")
         if self.was_resetted:
-            self.was_resetted = False
             return
         self._ticker.resume()
 
@@ -50,8 +56,20 @@ class PoetryAI(Screen):
         """Also there for the api call handling"""
         if event.input.value != "":
             history = self.query_one(ChatHistory)
-            history.messages = [*history.messages, (MessageTypeEnum.HumanMessage, event.input.value)]
+            history.messages = [*history.messages]
+            self.recompose()
+            if self.was_resetted:
+                for message in self.api_handler.start_session(event.input.value):
+                    history.messages.append(message)
+            else:
+                response = self.api_handler.resume_chat(event.input.value)
+                for message in response[0]:
+                    history.messages.append(message)
+                if response[1]:
+                    #TODO: Add Print handler!
+                    pass
             event.input.value = ""
+            self.was_resetted = False
             self.query_one("#prompt", Input).focus()
 
     @on(Button.Pressed)
@@ -69,6 +87,7 @@ class PoetryAI(Screen):
         history.messages = [history.messages[0]]
         self.query_one("#prompt", Input).value = ""
         self.session_id += 1
+        self.api_handler = APIHandler(self.session_id)
 
 
 
