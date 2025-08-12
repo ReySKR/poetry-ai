@@ -1,35 +1,49 @@
 from textual.app import App, ComposeResult
 from textual.screen import Screen
-from textual.widgets import Footer, Header, Input, Button
+from textual.widgets import Footer, Header, Input, Button, Static
 from textual import on
 
 from poetry_tui.chat_components import *
 
+CHAT_TIMEOUT = 120
 
 class PoetryAI(Screen):
     """A Textual app to create a chat interface for the poetry ai.."""
     session_id = 0
-    _debounce = None
+    was_resetted = False
 
     def compose(self) -> ComposeResult:
-        """Create child widgets for the app."""
         yield Header(show_clock=True)
         yield ChatHistory()
         yield InputContainer()
+        yield Static("", id="label_timeout")
 
     def on_mount(self) -> None:
-        # Autofokus beim Start
         self.query_one("#prompt", Input).focus()
-        self._debounce = None
+        self._label: Static = self.query_one("#label_timeout", Static)
+        self._debounce_count: int = CHAT_TIMEOUT
+        self._label.update(f"{self._debounce_count}s bis zur Zurücksetzung des Chats")
+        self._ticker: Timer = self.set_interval(1.0, self._second_step, pause=True)
 
     @on(Input.Changed)
     def on_prompt_changed(self, ev: Input.Changed) -> None:
-        text = ev.value
+        self._debounce_count = CHAT_TIMEOUT
+        self._label.update(f"{self._debounce_count}s bis zur Zurücksetzung des Chats")
+        if self.was_resetted:
+            self.was_resetted = False
+            return
+        self._ticker.resume()
 
-        # TODO: Show timer on display!
-        if self._debounce:
-            self._debounce.stop()
-        self._debounce = self.set_timer(5, lambda: self._reset_chat())
+
+    def _second_step(self) -> None:
+        if self._debounce_count <= 0:
+            self._ticker.pause()
+            self._label.update("0s bis zur Zurücksetzung des Chats")
+            self._reset_chat()  # deine Funktion
+            return
+        self._debounce_count -= 1
+        self._label.update(f"{self._debounce_count}s bis zur Zurücksetzung des Chats")
+
 
     @on(Input.Submitted)
     def handle_submit(self, event: Input.Submitted) -> None:
@@ -50,10 +64,12 @@ class PoetryAI(Screen):
             pass
 
     def _reset_chat(self):
+        self.was_resetted = True
         history = self.query_one(ChatHistory)
         history.messages = [history.messages[0]]
         self.query_one("#prompt", Input).value = ""
         self.session_id += 1
+
 
 
 class PoetryTUI(App):

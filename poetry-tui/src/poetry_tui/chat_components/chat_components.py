@@ -54,4 +54,3 @@ class InputContainer(VerticalGroup):
             Button("Neuer Chat", id="btn_new_chat"),
             Button("Drucken", id="btn_print")
         )
-        yield Label
