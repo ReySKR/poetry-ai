@@ -65,7 +65,7 @@ class PoetryAI(Screen):
         history = self.query_one(ChatHistory)
         history.messages = [*history.messages]
         self.notify(str(self.was_resetted))
-        self.chat_history_container.is_loading = True
+        await self.app.push_screen(LoadingOverlay())
         await self.recompose()
         if self.was_resetted:
             # start_session ist jetzt async → await nicht vergessen
@@ -79,6 +79,7 @@ class PoetryAI(Screen):
                 self.notify("Chat Ended (NOT IMPLEMENTED)")
         self.was_resetted = False
         self.chat_history_container.is_loading = False
+        await self.app.pop_screen()
         await self.recompose()
 
     @on(Button.Pressed)
