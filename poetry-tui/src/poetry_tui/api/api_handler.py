@@ -1,27 +1,56 @@
-import requests
 import os
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
+import httpx
 from poetry_tui.chat_components import MessageTypeEnum
 
 
 class APIHandler:
-    def __init__(self, session_id: int):
+    def __init__(self, session_id: int, client: Optional[httpx.AsyncClient] = None):
         self._session_id = session_id
         self.api_endpoint = os.getenv("API_ENDPOINT")
+        if not self.api_endpoint:
+            raise RuntimeError("API_ENDPOINT ist nicht gesetzt.")
 
-    def start_session(self, input: str) -> List[Tuple[MessageTypeEnum, str]]:
-        response = requests.get(f"{self.api_endpoint}/start_chat/{self._session_id}", params={"user_message": input}).json()
-        return [(MessageTypeEnum.HumanMessage if message["type"] == "human" else MessageTypeEnum.AIMessage, message["content"]) for message in response["messages"]]
+        # Falls kein Client injiziert wird, verwalten wir einen eigenen
+        self._client_external = client is not None
+        self._client = client or httpx.AsyncClient(base_url=self.api_endpoint, timeout=None)
 
-    def resume_chat(self, input: int) -> Tuple[List[Tuple[MessageTypeEnum, str]], bool]:
+    async def aclose(self) -> None:
+        """Client schließen, wenn intern erstellt."""
+        if not self._client_external and not self._client.is_closed:
+            await self._client.aclose()
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        await self.aclose()
+
+    async def start_session(self, input: str) -> List[Tuple[MessageTypeEnum, str]]:
+        resp = await self._client.get(f"/start_chat/{self._session_id}", params={"user_message": input})
+        resp.raise_for_status()
+        data = resp.json()
+        return [
+            (
+                MessageTypeEnum.HumanMessage if message["type"] == "human" else MessageTypeEnum.AIMessage,
+                message["content"],
+            )
+            for message in data["messages"]
+        ]
+
+    async def resume_chat(self, input: int) -> Tuple[List[Tuple[MessageTypeEnum, str]], bool]:
         """Resumes chat. 2nd Tuple element signals end of chat!"""
-        response = requests.get(f"{self.api_endpoint}/resume_chat/{self._session_id}", params={"user_message": input}).json()
+        resp = await self._client.get(f"/resume_chat/{self._session_id}", params={"user_message": input})
+        resp.raise_for_status()
+        data = resp.json()
         return (
-            [(MessageTypeEnum.HumanMessage if message["type"] == "human" else MessageTypeEnum.AIMessage,
-              message["content"]) for message in response["messages"]],
-            "__interrupt__" in response
+            [
+                (
+                    MessageTypeEnum.HumanMessage if message["type"] == "human" else MessageTypeEnum.AIMessage,
+                    message["content"],
+                )
+                for message in data["messages"]
+            ],
+            "__interrupt__" in data,
         )
-
-
-

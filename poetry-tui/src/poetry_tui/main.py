@@ -16,10 +16,11 @@ class PoetryAI(Screen):
     session_id = 0
     was_resetted = True
     api_handler = None
+    chat_history_container = ChatHistory()
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
-        yield ChatHistory()
+        yield self.chat_history_container
         yield InputContainer()
         yield Static("", id="label_timeout")
 
@@ -52,25 +53,33 @@ class PoetryAI(Screen):
 
 
     @on(Input.Submitted)
-    def handle_submit(self, event: Input.Submitted) -> None:
+    async def handle_submit(self, event: Input.Submitted) -> None:
         """Also there for the api call handling"""
+        # TODO: Add worker AND trim messages to only show newest!
         if event.input.value != "":
-            history = self.query_one(ChatHistory)
-            history.messages = [*history.messages]
-            self.recompose()
-            if self.was_resetted:
-                for message in self.api_handler.start_session(event.input.value):
-                    history.messages.append(message)
-            else:
-                response = self.api_handler.resume_chat(event.input.value)
-                for message in response[0]:
-                    history.messages.append(message)
-                if response[1]:
-                    #TODO: Add Print handler!
-                    pass
+            self.run_worker(self.call_api(event.input.value))
             event.input.value = ""
-            self.was_resetted = False
             self.query_one("#prompt", Input).focus()
+
+    async def call_api(self, prompt: str) -> None:
+        history = self.query_one(ChatHistory)
+        history.messages = [*history.messages]
+        self.notify(str(self.was_resetted))
+        self.chat_history_container.is_loading = True
+        await self.recompose()
+        if self.was_resetted:
+            # start_session ist jetzt async → await nicht vergessen
+            messages = await self.api_handler.start_session(prompt)
+            history.messages = messages
+        else:
+            # resume_chat liefert (messages, ended)
+            messages, ended = await self.api_handler.resume_chat(prompt)
+            history.messages = messages
+            if ended:
+                self.notify("Chat Ended (NOT IMPLEMENTED)")
+        self.was_resetted = False
+        self.chat_history_container.is_loading = False
+        await self.recompose()
 
     @on(Button.Pressed)
     def on_button_pressed(self, event: Button.Pressed) -> None:
@@ -79,7 +88,7 @@ class PoetryAI(Screen):
             self._reset_chat()
         if event.button.id == "btn_print":
             #TODO: Implement print!
-            pass
+            self.notify("Print Chat (NOT IMPLEMENTED)")
 
     def _reset_chat(self):
         self.was_resetted = True

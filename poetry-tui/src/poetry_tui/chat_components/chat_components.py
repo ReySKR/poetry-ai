@@ -1,9 +1,11 @@
 from typing import List, Tuple
 
 from textual.app import ComposeResult, App
+from textual.color import Color
 from textual.containers import VerticalGroup, VerticalScroll, HorizontalGroup
 from textual.reactive import Reactive, reactive
-from textual.widgets import Label, Input, Button
+from textual.widgets import Label, Input, Button, LoadingIndicator
+from textual.screen import ModalScreen
 
 from .utility import MessageTypeEnum
 
@@ -23,11 +25,11 @@ class _MessageContainer(VerticalGroup):
         yield Label(self.message)
 
 class ChatHistory(VerticalScroll):
-    messages: Reactive[List[Tuple[MessageTypeEnum, str]]] = reactive([
-        (MessageTypeEnum.AIMessage, "Hey! Im your assistant"),
-    ], init=False, recompose=True)
+    messages: Reactive[List[Tuple[MessageTypeEnum, str]]] = reactive([], init=False, recompose=True)
+    is_loading: Reactive[bool] = reactive(False)
 
     def compose(self) -> ComposeResult:
+        yield _MessageContainer(MessageTypeEnum.AIMessage, "Hey! Ich bin dein Poesieassitent. Zusammen werden wir ein tolles Gedicht zaubern, beschreibe doch einfach eine Szenerie, oder gib mir ein paar Stichwörter und ich mache dir einen Vorschlag 😃")
         for message_type, message in self.messages:
             yield _MessageContainer(message_type, message)
 
@@ -54,3 +56,11 @@ class InputContainer(VerticalGroup):
             Button("Neuer Chat", id="btn_new_chat"),
             Button("Drucken", id="btn_print")
         )
+
+class LoadingOverlay(ModalScreen):
+    def __init__(self):
+        super().__init__()
+        self.styles.background = Color.parse("rgba(255, 255, 255, 0.1)")
+
+    def compose(self):
+        yield LoadingIndicator()
