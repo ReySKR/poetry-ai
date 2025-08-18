@@ -1,2 +1,3 @@
-def main() -> None:
-    print("Hello from poetry-tui!")
+import logging
+
+logging.basicConfig(level=logging.INFO)

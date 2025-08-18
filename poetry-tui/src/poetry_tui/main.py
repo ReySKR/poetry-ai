@@ -1,12 +1,15 @@
 from textual.app import App, ComposeResult
 from textual.screen import Screen
-from textual.widgets import Footer, Header, Input, Button, Static
+from textual.timer import Timer
+from textual.widgets import Header, Input, Button, Static
 from textual import on
 from dotenv import load_dotenv
 
 from poetry_tui.chat_components import *
 # noinspection PyUnresolvedReferences
 from poetry_tui.api import APIHandler
+from poetry_tui.utility import log_message, LogSeverityEnum
+from typing import Union
 load_dotenv()
 
 CHAT_TIMEOUT = 120
@@ -15,7 +18,7 @@ class PoetryAI(Screen):
     """A Textual app to create a chat interface for the poetry ai.."""
     session_id = 0
     was_resetted = True
-    api_handler = None
+    api_handler: Union[APIHandler, None] = None
     chat_history_container = ChatHistory()
 
     def compose(self) -> ComposeResult:
@@ -25,12 +28,13 @@ class PoetryAI(Screen):
         yield Static("", id="label_timeout")
 
     def on_mount(self) -> None:
+        """Initialize components on each mount: 1. Focus Prompt Interface, 2. Init Timer for auto timeout (clearing of chat history) 3. Init APIHandler"""
         self.query_one("#prompt", Input).focus()
         self._label: Static = self.query_one("#label_timeout", Static)
         self._debounce_count: int = CHAT_TIMEOUT
         self._label.update(f"{self._debounce_count}s bis zur Zurücksetzung des Chats")
         self._ticker: Timer = self.set_interval(1.0, self._second_step, pause=True)
-        self.api_handler = APIHandler(self.session_id)
+        self.api_handler = APIHandler()
 
 
     @on(Input.Changed)
@@ -46,7 +50,7 @@ class PoetryAI(Screen):
         if self._debounce_count <= 0:
             self._ticker.pause()
             self._label.update("0s bis zur Zurücksetzung des Chats")
-            self._reset_chat()  # deine Funktion
+            self._reset_chat()
             return
         self._debounce_count -= 1
         self._label.update(f"{self._debounce_count}s bis zur Zurücksetzung des Chats")
@@ -63,23 +67,27 @@ class PoetryAI(Screen):
     async def call_api(self, prompt: str) -> None:
         history = self.query_one(ChatHistory)
         history.messages = [*history.messages]
-        self.notify(str(self.was_resetted))
         await self.app.push_screen(LoadingOverlay())
         await self.recompose()
-        if self.was_resetted:
-            # start_session ist jetzt async → await nicht vergessen
-            messages = await self.api_handler.start_session(prompt)
-            history.messages = messages
-        else:
-            # resume_chat liefert (messages, ended)
-            messages, ended = await self.api_handler.resume_chat(prompt)
-            history.messages = messages
-            if ended:
-                self.notify("Chat Ended (NOT IMPLEMENTED)")
-        self.was_resetted = False
-        self.chat_history_container.is_loading = False
-        await self.app.pop_screen()
-        await self.recompose()
+        try:
+            if self.was_resetted:
+                # start_session ist jetzt async → await nicht vergessen
+                messages = await self.api_handler.start_session(prompt, self.session_id)
+                history.messages = messages
+            else:
+                # resume_chat liefert (messages, ended)
+                messages, ended = await self.api_handler.resume_chat(prompt, self.session_id)
+                history.messages = messages
+                if ended:
+                    log_message(self,"Chat Ended (NOT IMPLEMENTED)", LogSeverityEnum.INFO)
+            # If chat api responded correctly set was_resetted to false in order to being able to resume chat
+            self.was_resetted = False
+        except Exception as e:
+            log_message(self,str(e), LogSeverityEnum.ERROR)
+        finally:
+            self.chat_history_container.is_loading = False
+            await self.app.pop_screen()
+            await self.recompose()
 
     @on(Button.Pressed)
     def on_button_pressed(self, event: Button.Pressed) -> None:
@@ -88,7 +96,7 @@ class PoetryAI(Screen):
             self._reset_chat()
         if event.button.id == "btn_print":
             #TODO: Implement print!
-            self.notify("Print Chat (NOT IMPLEMENTED)")
+            log_message(self, "Print Chat (NOT IMPLEMENTED)", LogSeverityEnum.INFO)
 
     def _reset_chat(self):
         self.was_resetted = True
@@ -96,7 +104,6 @@ class PoetryAI(Screen):
         history.messages = [history.messages[0]]
         self.query_one("#prompt", Input).value = ""
         self.session_id += 1
-        self.api_handler = APIHandler(self.session_id)
 
 
 
