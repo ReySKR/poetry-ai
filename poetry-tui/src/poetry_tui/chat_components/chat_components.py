@@ -22,7 +22,7 @@ class _MessageContainer(VerticalGroup):
             self.styles.border = ("heavy", "purple")
 
     def compose(self) -> ComposeResult:
-        yield Label(self.message)
+        yield Label(self.message, markup=True, shrink=True)
 
 class ChatHistory(VerticalScroll):
     messages: Reactive[List[Tuple[MessageTypeEnum, str]]] = reactive([], init=False, recompose=True)

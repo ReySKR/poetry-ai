@@ -55,7 +55,6 @@ class PoetryAI(Screen):
     @on(Input.Submitted)
     async def handle_submit(self, event: Input.Submitted) -> None:
         """Also there for the api call handling"""
-        # TODO: Add worker AND trim messages to only show newest!
         if event.input.value != "":
             self.run_worker(self.call_api(event.input.value))
             event.input.value = ""
