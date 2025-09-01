@@ -4,6 +4,9 @@ from textual.timer import Timer
 from textual.widgets import Header, Input, Button, Static
 from textual import on
 from dotenv import load_dotenv
+import os
+from escpos.printer import File, Dummy
+from uuid import uuid1
 
 from poetry_tui.chat_components import *
 # noinspection PyUnresolvedReferences
@@ -16,13 +19,12 @@ CHAT_TIMEOUT = 120
 
 class PoetryAI(Screen):
     """A Textual app to create a chat interface for the poetry ai.."""
-    session_id = 0
+    session_id = uuid1().int
     was_resetted = True
     api_handler: Union[APIHandler, None] = None
     chat_history_container = ChatHistory()
 
     def compose(self) -> ComposeResult:
-        yield Header(show_clock=True)
         yield self.chat_history_container
         yield InputContainer()
         yield Static("", id="label_timeout")
@@ -78,8 +80,8 @@ class PoetryAI(Screen):
                 # resume_chat liefert (messages, ended)
                 messages, ended = await self.api_handler.resume_chat(prompt, self.session_id)
                 history.messages = messages
-                if ended:
-                    log_message(self,"Chat Ended (NOT IMPLEMENTED)", LogSeverityEnum.INFO)
+                # if ended:
+                #     self._print_latest_poetry()
             # If chat api responded correctly set was_resetted to false in order to being able to resume chat
             self.was_resetted = False
         except Exception as e:
@@ -95,15 +97,50 @@ class PoetryAI(Screen):
         if event.button.id == "btn_new_chat":
             self._reset_chat()
         if event.button.id == "btn_print":
-            #TODO: Implement print!
-            log_message(self, "Print Chat (NOT IMPLEMENTED)", LogSeverityEnum.INFO)
+            # Print on button click
+            self._print_latest_poetry()
 
     def _reset_chat(self):
         self.was_resetted = True
         history = self.query_one(ChatHistory)
-        history.messages = [history.messages[0]]
+        history.messages = []
         self.query_one("#prompt", Input).value = ""
-        self.session_id += 1
+        self.session_id = uuid1().int
+
+    def _print_latest_poetry(self):
+        device_path = os.getenv("PRINTER_DEVICE_PATH")
+        last_poetry = self.api_handler.last_poetry
+        try:
+            f = File(device_path)
+            d = Dummy()
+            f.set_with_default(width=384)
+            d.set(align="center", bold=True, height=3, width=384)
+            d.text("AI Poetry")
+            d.ln()
+            d.ln()
+            d.set(align="center", bold=True, height=2, width=384)
+
+            d.ln()
+            d.set(align="left", bold=False, height=1, width=384)
+            d.text(last_poetry)
+
+            d.image(img_source="./resources/vsh_logo.jpeg", center=True)
+            d.set(align="center", bold=True, height=2, width=2)
+            d.text("Events und mehr unter")
+            d.ln()
+            d.text("verschwörhaus.de")
+            d.ln()
+            d.ln()
+            d.ln()
+            d.ln()
+
+            f._raw(d.output)
+            f.close()
+            self.api_handler.last_poetry = None
+        except Exception as e:
+            log_message(self, f"Es ist ein Druckfehler aufgetreten. Bitte kontaktiere uns einmal: {e}", LogSeverityEnum.ERROR)
+
+
 
 
 

@@ -1,13 +1,18 @@
 import os
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Union
 
 import httpx
 from poetry_tui.chat_components import MessageTypeEnum
 
 
 class APIHandler:
+    api_endpoint: str
+    last_poetry: Union[str, None]
+
     def __init__(self, client: Optional[httpx.AsyncClient] = None):
         self.api_endpoint = os.getenv("API_ENDPOINT")
+        self.last_poetry = None
+
         if not self.api_endpoint:
             raise RuntimeError("API_ENDPOINT ist nicht gesetzt.")
 
@@ -29,6 +34,7 @@ class APIHandler:
         resp = await self._client.get(f"/start_chat/{session_id}", params={"user_message": input})
         resp.raise_for_status()
         data = resp.json()
+        self.last_poetry = data["last_poetry"]["content"]
         return [
             (
                 MessageTypeEnum.HumanMessage if message["type"] == "human" else MessageTypeEnum.AIMessage,
@@ -42,6 +48,7 @@ class APIHandler:
         resp = await self._client.get(f"/resume_chat/{session_id}", params={"user_message": input})
         resp.raise_for_status()
         data = resp.json()
+        self.last_poetry = data["last_poetry"]["content"]
         return (
             [
                 (
