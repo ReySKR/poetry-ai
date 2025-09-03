@@ -1,24 +1,47 @@
 from .state import State
 from .prompt import sys_prompts_arch_1 as sys_prompts
-from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import SystemMessage, AIMessage, HumanMessage
 from langgraph.types import interrupt
 from langgraph.graph import END
+import os
 
 
-_llm = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash",
-    temperature=1.0,
-    max_tokens=None,
-    timeout=None,
-    max_retries=2,
+_llm_type = os.getenv("LLM_TYPE")
+_model = os.getenv("MODEL_NAME")
+_inference_server = os.getenv("INFERENCE_SERVER")
+_temp = os.getenv("TEMPERATURE")
+
+_llm = None
+if _llm_type == "OLLAMA":
+    from langchain_ollama import ChatOllama
+    _llm = ChatOllama(
+        model=_model,
+        base_url=_inference_server,
+        temperature=_temp
+        )
+elif _llm_type == "VLLM":
+    from langchain_openai import ChatOpenAI
+    _llm = ChatOpenAI(
+    model=_model,
+    openai_api_key="EMPTY",
+    openai_api_base=_inference_server,
+    temperature=_temp
+)
+else:
+    from langchain_google_genai import ChatGoogleGenerativeAI
+    _llm = ChatGoogleGenerativeAI(
+        model=_model,
+    temperature=_temp,
+        max_tokens=None,
+        timeout=None,
+        max_retries=2,
 )
 
 def create_poetry(state: State) -> State:
     """
     Creates initial poetry
     """
-    sys_prompt = sys_prompts["create_poetry"][0]
+    sys_prompt = sys_prompts["create_poetry"][0][0]
     message_stack = [
         SystemMessage(sys_prompt),
         HumanMessage(state["messages"][0].content)
@@ -32,7 +55,7 @@ def create_follow_up_question(state: State) -> State:
     """
     If poetry create a follow_up_question -> interrupt
     """
-    sys_prompt = sys_prompts["create_follow_up_question"][0]
+    sys_prompt = sys_prompts["create_follow_up_question"][0][0]
     message_stack = [
         SystemMessage(sys_prompt),
         HumanMessage(state["last_poetry"].content)
@@ -52,7 +75,7 @@ def is_finished(state:State) -> str:
     """
     Decides whether a poetry was accepted
     """
-    sys_prompt = sys_prompts["is_finished"][0]
+    sys_prompt = sys_prompts["is_finished"][0][0]
 
     history = ""
 
@@ -76,7 +99,7 @@ def history_rewriter(state: State) -> State:
     """
     Rephrase answer of user that its understandable without history
     """
-    sys_prompt = sys_prompts["history_rewriter"][0]
+    sys_prompt = sys_prompts["history_rewriter"][0][0]
     message_stack = [
         SystemMessage(sys_prompt),
         HumanMessage(state["last_criticism"].content)
@@ -89,7 +112,7 @@ def rephrase_poetry(state: State) -> State:
     """
     If poetry wasnt accepted rephrase poetry based on answer of user
     """
-    sys_prompt = sys_prompts["rephrase_poetry"][0]
+    sys_prompt = sys_prompts["rephrase_poetry"][0][0]
     message_stack = [
         SystemMessage(sys_prompt),
         HumanMessage(
@@ -106,3 +129,4 @@ def rephrase_poetry(state: State) -> State:
     state["messages"].append(rephrased_poetry)
     state["last_poetry"] = rephrased_poetry
     return state
+
