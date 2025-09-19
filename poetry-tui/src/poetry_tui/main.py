@@ -126,8 +126,6 @@ class PoetryAI(Screen):
 
             d.image(img_source="./resources/vsh_logo.jpeg", center=True)
             d.set(align="center", bold=True, height=2, width=2)
-            d.text("Events und mehr unter")
-            d.ln()
             d.text("verschwörhaus.de")
             d.ln()
             d.ln()
